@@ -28,6 +28,10 @@ body {
   color: var(--text);
 }
 
+body.auth-locked {
+  overflow: hidden;
+}
+
 button,
 input,
 textarea {
@@ -38,6 +42,89 @@ textarea {
   max-width: 1480px;
   margin: 0 auto;
   padding: 36px 28px 64px;
+}
+
+.app-shell.is-locked {
+  filter: blur(16px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(30, 90, 67, 0.28), transparent 30%),
+    linear-gradient(180deg, rgba(237, 244, 239, 0.92) 0%, rgba(233, 242, 236, 0.97) 100%);
+  backdrop-filter: blur(14px);
+}
+
+.auth-overlay.is-hidden {
+  display: none;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  padding: 34px 32px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow: var(--shadow);
+}
+
+.auth-eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.auth-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+  line-height: 1.04;
+}
+
+.auth-copy {
+  margin: 0 0 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form span {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid #d6e3db;
+  border-radius: 18px;
+  padding: 13px 15px;
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.auth-note {
+  margin: -2px 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
 }
 
 .hero {
@@ -129,6 +216,28 @@ textarea {
   font-size: 0.9rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.session-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.active-user-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .hero-card ol {

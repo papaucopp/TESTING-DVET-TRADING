@@ -69,6 +69,12 @@ const SUPPLIER_STORAGE_KEY = "po-complete-set-supplier-history";
 const COUNTERS_STORAGE_KEY = "po-complete-set-running-counters";
 const RECORDS_STORAGE_KEY = "po-complete-set-saved-records";
 const PO_ITEMS_STORAGE_KEY = "po-complete-set-saved-po-items";
+const AUTH_SESSION_STORAGE_KEY = "po-complete-set-auth-session";
+const ACCESS_USERS = {
+  ALIF: { password: "ALIF@DVET", displayName: "Alif" },
+  ROSLIMAN: { password: "ROSLIMAN@DVET", displayName: "Rosliman" },
+  SYAWAL: { password: "SYAWAL@DVET", displayName: "Syawal" },
+};
 const state = {
   data: structuredClone(defaultState),
   extractedText: "",
@@ -79,10 +85,18 @@ const state = {
   savedPoItems: [],
   currentRecordId: "",
   logoDataUrl: "",
+  authUser: "",
 };
 
 const form = document.getElementById("documentForm");
 const statusBox = document.getElementById("statusBox");
+const authOverlay = document.getElementById("authOverlay");
+const loginForm = document.getElementById("loginForm");
+const loginUserIdField = document.getElementById("loginUserId");
+const loginPasswordField = document.getElementById("loginPassword");
+const loginNotice = document.getElementById("loginNotice");
+const activeUserBadge = document.getElementById("activeUserBadge");
+const logoutButton = document.getElementById("logoutButton");
 const companyInputs = Array.from(document.querySelectorAll('input[name="documentCompany"]'));
 const categorySelector = document.getElementById("categorySelector");
 const categoryInputs = Array.from(document.querySelectorAll('input[name="documentCategory"]'));
@@ -179,6 +193,94 @@ async function ensureLogoDataUrl() {
 function setStatus(message, tone = "neutral") {
   statusBox.textContent = message;
   statusBox.dataset.tone = tone;
+}
+
+function setLoginNotice(message, tone = "neutral") {
+  if (!loginNotice) return;
+  loginNotice.textContent = message;
+  loginNotice.dataset.tone = tone;
+}
+
+function updateAuthUi() {
+  const isAuthenticated = Boolean(state.authUser);
+  document.body.classList.toggle("auth-locked", !isAuthenticated);
+  document.querySelector(".app-shell")?.classList.toggle("is-locked", !isAuthenticated);
+  authOverlay?.classList.toggle("is-hidden", isAuthenticated);
+  if (activeUserBadge) {
+    activeUserBadge.textContent = isAuthenticated ? `Logged in: ${state.authUser}` : "Not logged in";
+  }
+}
+
+function saveAuthSession(userId) {
+  try {
+    localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify({ userId }));
+  } catch (error) {
+    console.error("Failed to save auth session", error);
+  }
+}
+
+function clearAuthSession() {
+  try {
+    localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  } catch (error) {
+    console.error("Failed to clear auth session", error);
+  }
+}
+
+function restoreAuthSession() {
+  try {
+    const raw = localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const savedUserId = String(parsed?.userId || "").toUpperCase();
+    if (ACCESS_USERS[savedUserId]) {
+      state.authUser = ACCESS_USERS[savedUserId].displayName;
+    }
+  } catch (error) {
+    console.error("Failed to restore auth session", error);
+    state.authUser = "";
+  }
+}
+
+function loginUser(userId, password) {
+  const normalizedUserId = String(userId || "").trim().toUpperCase();
+  const normalizedPassword = String(password || "").trim();
+  const account = ACCESS_USERS[normalizedUserId];
+  if (!account || account.password !== normalizedPassword) {
+    setLoginNotice("Invalid ID or password. Please try again.", "error");
+    return false;
+  }
+
+  state.authUser = account.displayName;
+  saveAuthSession(normalizedUserId);
+  applyAuthenticatedPreparedBy(state.data);
+  syncFormFromState();
+  updateAuthUi();
+  setLoginNotice("", "neutral");
+  if (loginPasswordField) {
+    loginPasswordField.value = "";
+  }
+  setStatus(`Welcome ${account.displayName}. Please select one company first, then choose UBAT, SUSU, or PERALATAN.`, "success");
+  return true;
+}
+
+function logoutCurrentUser() {
+  state.authUser = "";
+  clearAuthSession();
+  updateAuthUi();
+  setLoginNotice("Session locked. Please log in again.", "warn");
+  setStatus("System locked. Please log in to continue.", "warn");
+}
+
+function getAuthenticatedPreparedBy() {
+  return String(state.authUser || "").trim();
+}
+
+function applyAuthenticatedPreparedBy(target = state.data) {
+  const preparedBy = getAuthenticatedPreparedBy();
+  if (!preparedBy) return target;
+  target.poPreparedBy = preparedBy;
+  target.invoicePreparedBy = preparedBy;
+  return target;
 }
 
 function setSaveRecordNotice(message = "", tone = "neutral") {
@@ -690,19 +792,18 @@ function saveCurrentRecord({ showStatus = true } = {}) {
   renderSavedRecords();
 
   if (!wasExistingRecord) {
-    const currentCategory = state.data.category;
     commitCurrentDraftNumbers(record.data);
-    state.currentRecordId = "";
-    state.data = createNewDocumentStateForCategory(currentCategory);
-    syncCategoryControlsFromState();
-    setCategoryGateState();
-    syncFormFromState();
-    renderItemsEditor(poItemsEditor, "poItems");
-    renderItemsEditor(invoiceItemsEditor, "invoiceItems");
-    renderItemsEditor(doItemsEditor, "doItems");
-    renderDocuments();
-    renderSavedRecords();
   }
+
+  syncCompanyControlsFromState();
+  syncCategoryControlsFromState();
+  setCategoryGateState();
+  syncFormFromState();
+  renderItemsEditor(poItemsEditor, "poItems");
+  renderItemsEditor(invoiceItemsEditor, "invoiceItems");
+  renderItemsEditor(doItemsEditor, "doItems");
+  renderDocuments();
+  renderSavedRecords();
 
   if (showStatus) {
     setSaveRecordNotice(saveMessage, "success");
@@ -715,10 +816,10 @@ function loadRecordById(recordId) {
   if (!record) return false;
 
   state.currentRecordId = record.id;
-  state.data = {
+  state.data = applyAuthenticatedPreparedBy({
     ...structuredClone(defaultState),
     ...structuredClone(record.data),
-  };
+  });
   syncFormFromState();
   syncCompanyControlsFromState();
   syncCategoryControlsFromState();
@@ -865,7 +966,7 @@ function createNewDocumentState() {
   const nextState = structuredClone(defaultState);
   nextState.invoiceStatus = "Pending";
   nextState.doStatus = "Delivered";
-  return nextState;
+  return applyAuthenticatedPreparedBy(nextState);
 }
 
 function createNewDocumentStateForCategory(category) {
@@ -875,11 +976,11 @@ function createNewDocumentStateForCategory(category) {
   nextState.invoiceStatus = "Pending";
   nextState.doStatus = "Delivered";
   assignDraftRunningNumbers(nextState);
-  return nextState;
+  return applyAuthenticatedPreparedBy(nextState);
 }
 
 function createBlankDraftWithCurrentNumbers(current = state.data) {
-  return {
+  return applyAuthenticatedPreparedBy({
     ...structuredClone(defaultState),
     company: current.company,
     category: current.category,
@@ -889,7 +990,7 @@ function createBlankDraftWithCurrentNumbers(current = state.data) {
     doInvoiceNumber: current.invoiceNumber,
     invoiceStatus: "Pending",
     doStatus: "Delivered",
-  };
+  });
 }
 
 function resetRunningCounters() {
@@ -2190,6 +2291,17 @@ const poPreparedByField = form.elements.namedItem("poPreparedBy");
 const invoicePoJhevField = form.elements.namedItem("invoicePoJhev");
 const doPoJhevField = form.elements.namedItem("doPoJhev");
 
+function syncPoJhevAcrossDocuments(value = "") {
+  state.data.invoicePoJhev = value;
+  state.data.doPoJhev = value;
+  if (invoicePoJhevField) {
+    invoicePoJhevField.value = value;
+  }
+  if (doPoJhevField) {
+    doPoJhevField.value = value;
+  }
+}
+
 poPreparedByField?.addEventListener("change", () => {
   state.data.poPreparedBy = poPreparedByField.value;
   state.data.invoicePreparedBy = poPreparedByField.value;
@@ -2198,22 +2310,22 @@ poPreparedByField?.addEventListener("change", () => {
 });
 
 invoicePoJhevField?.addEventListener("input", () => {
-  state.data.invoicePoJhev = invoicePoJhevField.value;
+  syncPoJhevAcrossDocuments(invoicePoJhevField.value);
   renderDocuments();
 });
 
 invoicePoJhevField?.addEventListener("change", () => {
-  state.data.invoicePoJhev = invoicePoJhevField.value;
+  syncPoJhevAcrossDocuments(invoicePoJhevField.value);
   renderDocuments();
 });
 
 doPoJhevField?.addEventListener("input", () => {
-  state.data.doPoJhev = doPoJhevField.value;
+  syncPoJhevAcrossDocuments(doPoJhevField.value);
   renderDocuments();
 });
 
 doPoJhevField?.addEventListener("change", () => {
-  state.data.doPoJhev = doPoJhevField.value;
+  syncPoJhevAcrossDocuments(doPoJhevField.value);
   renderDocuments();
 });
 
@@ -2312,11 +2424,21 @@ deleteSupplierHistoryButton?.addEventListener("click", () => {
   setStatus("Selected Supplier history entry deleted.", "success");
 });
 
+loginForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  loginUser(loginUserIdField?.value, loginPasswordField?.value);
+});
+
+logoutButton?.addEventListener("click", () => {
+  logoutCurrentUser();
+});
+
 loadBillToHistory();
 loadSupplierHistory();
 loadRunningCounters();
 loadSavedRecords();
 loadSavedPoItems();
+restoreAuthSession();
 renderBillToHistory();
 renderSupplierHistory();
 renderSavedRecords();
@@ -2324,4 +2446,10 @@ applyParsedData(createNewDocumentState());
 syncCompanyControlsFromState();
 syncCategoryControlsFromState();
 setCategoryGateState();
-setStatus("Please select one company first, then choose UBAT, SUSU, or PERALATAN.", "warn");
+updateAuthUi();
+if (state.authUser) {
+  setStatus("Please select one company first, then choose UBAT, SUSU, or PERALATAN.", "warn");
+} else {
+  setLoginNotice("Please log in with your assigned ID and password.", "warn");
+  setStatus("System locked. Please log in to continue.", "warn");
+}

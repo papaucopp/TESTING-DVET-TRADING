@@ -10,9 +10,35 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=2026-04-13-company-5" />
+    <link rel="stylesheet" href="./styles.css?v=2026-04-13-auth-2" />
   </head>
   <body>
+    <div class="auth-overlay" id="authOverlay">
+      <div class="auth-card">
+        <p class="auth-eyebrow">Secure Access</p>
+        <h1>DVET Trading Procurement System</h1>
+        <p class="auth-copy">Please enter your ID and password before using the system.</p>
+        <form id="loginForm" class="auth-form">
+          <label>
+            <span>User ID</span>
+            <input id="loginUserId" name="loginUserId" type="text" placeholder="Example: ALIF" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input
+              id="loginPassword"
+              name="loginPassword"
+              type="password"
+              placeholder="Enter password"
+            />
+          </label>
+          <button class="primary-button" type="submit">Login</button>
+          <p class="auth-note">Example access: `ALIF` with password `ALIF@DVET`.</p>
+          <div id="loginNotice" class="status-box" data-tone="neutral"></div>
+        </form>
+      </div>
+    </div>
+
     <main class="app-shell">
       <section class="hero">
         <div>
@@ -25,6 +51,10 @@
         </div>
         <div class="hero-card">
           <p class="hero-card-title">System Flow</p>
+          <div class="session-bar">
+            <span id="activeUserBadge" class="active-user-badge">Not logged in</span>
+            <button id="logoutButton" class="ghost-button compact-button" type="button">Logout</button>
+          </div>
           <ol>
             <li>Create a PO in the form or upload `Purchase Order.pdf`</li>
             <li>Review buyer, ship to, items, and totals</li>
@@ -366,6 +396,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script type="module" src="./app.js?v=2026-04-13-company-5"></script>
+    <script type="module" src="./app.js?v=2026-04-13-auth-4"></script>
   </body>
 </html>

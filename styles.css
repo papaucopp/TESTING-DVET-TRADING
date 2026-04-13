@@ -204,6 +204,11 @@ textarea {
   margin-bottom: 18px;
 }
 
+.category-selector.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .category-option {
   display: flex;
   align-items: center;

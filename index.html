@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=2026-04-13-modern-2" />
+    <link rel="stylesheet" href="./styles.css?v=2026-04-13-company-5" />
   </head>
   <body>
     <main class="app-shell">
@@ -39,6 +39,21 @@
           <div class="panel-heading">
             <h2>Document Input</h2>
             <p>Create a PO manually or upload a PO and the system will read it automatically.</p>
+          </div>
+
+          <div class="panel-heading compact">
+            <h3>Company</h3>
+            <p>Select one company first.</p>
+          </div>
+          <div class="category-selector" id="companySelector">
+            <label class="category-option">
+              <input type="checkbox" name="documentCompany" value="trading" />
+              <span>DVET TRADING SDN BHD</span>
+            </label>
+            <label class="category-option">
+              <input type="checkbox" name="documentCompany" value="holding" />
+              <span>DVET HOLDING SDN BHD</span>
+            </label>
           </div>
 
           <div class="panel-heading compact">
@@ -351,6 +366,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script type="module" src="./app.js?v=2026-04-13-1"></script>
+    <script type="module" src="./app.js?v=2026-04-13-company-5"></script>
   </body>
 </html>

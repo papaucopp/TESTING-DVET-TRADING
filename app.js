@@ -1,14 +1,30 @@
-const companyProfile = {
-  name: "Dvet Trading Sdn Bhd",
-  registrationNo: "1482481-M",
-  addressLines: [
-    "TINGKAT 4, WISMA KAWAN, 36,",
-    "JALAN SERI UTARA 1, OFF JALAN IPOH, SRI UTARA,",
-    "68100 BATU CAVES,",
-    "WILAYAH PERSEKUTUAN KUALA LUMPUR.",
-  ],
-  phone: "03-6243 7276",
-  bankDetails: "AL RAJHI BANK A/C 129001881556134",
+const COMPANY_CONFIG = {
+  trading: {
+    label: "DVET TRADING SDN BHD",
+    name: "Dvet Trading Sdn Bhd",
+    registrationNo: "1482481-M",
+    addressLines: [
+      "TINGKAT 4, WISMA KAWAN, 36,",
+      "JALAN SERI UTARA 1, OFF JALAN IPOH, SRI UTARA,",
+      "68100 BATU CAVES,",
+      "WILAYAH PERSEKUTUAN KUALA LUMPUR.",
+    ],
+    phone: "03-6243 7276",
+    bankDetails: "AL RAJHI BANK A/C 129001881556134",
+  },
+  holding: {
+    label: "DVET HOLDING SDN BHD",
+    name: "Dvet Holding Sdn Bhd",
+    registrationNo: "707154-K",
+    addressLines: [
+      "TINGKAT 4, WISMA KAWAN, 36,",
+      "JALAN SERI UTARA 1, OFF JALAN IPOH, SRI UTARA,",
+      "68100 BATU CAVES,",
+      "WILAYAH PERSEKUTUAN KUALA LUMPUR.",
+    ],
+    phone: "03-6243 7276",
+    bankDetails: "AL RAJHI BANK A/C 129001881556134",
+  },
 };
 
 function createBlankItem() {
@@ -22,6 +38,7 @@ const CATEGORY_CONFIG = {
 };
 
 const defaultState = {
+  company: "",
   category: "",
   poNumber: "",
   poDate: "",
@@ -66,6 +83,7 @@ const state = {
 
 const form = document.getElementById("documentForm");
 const statusBox = document.getElementById("statusBox");
+const companyInputs = Array.from(document.querySelectorAll('input[name="documentCompany"]'));
 const categorySelector = document.getElementById("categorySelector");
 const categoryInputs = Array.from(document.querySelectorAll('input[name="documentCategory"]'));
 const uploadCard = document.getElementById("uploadCard");
@@ -98,6 +116,7 @@ const saveRecordNotice = document.getElementById("saveRecordNotice");
 let saveRecordNoticeTimeoutId = null;
 
 const fieldNames = [
+  "company",
   "poNumber",
   "poDate",
   "poSupplier",
@@ -259,16 +278,57 @@ function getYearSuffix(dateValue = "") {
   return String(new Date().getFullYear()).slice(-2);
 }
 
-function getCounterBucket(type, yearSuffix, categoryCode = "") {
-  return `${type}-${categoryCode || "X"}-${yearSuffix}`;
+function getCounterBucket(type, yearSuffix, categoryCode = "", company = state.data.company) {
+  return `${company || "unknown"}-${type}-${categoryCode || "X"}-${yearSuffix}`;
 }
 
-function formatRunningNumber(prefix, yearSuffix, counter) {
-  return `${prefix}${yearSuffix}-${String(counter).padStart(5, "0")}`;
+function formatTradingRunningNumber(type, yearSuffix, categoryCode, counter) {
+  const paddedCounter = String(counter).padStart(5, "0");
+  if (type === "po") {
+    return `DT/PO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
+  }
+  if (type === "invoice") {
+    return `DT/INV-${categoryCode}/${categoryCode}${yearSuffix}-${paddedCounter}`;
+  }
+  return `DT/DO-${categoryCode}${yearSuffix}-${paddedCounter}`;
+}
+
+function formatHoldingRunningNumber(type, yearSuffix, categoryCode, counter) {
+  const paddedCounter = String(counter).padStart(5, "0");
+  if (type === "po") {
+    return `DH/PO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
+  }
+  if (type === "invoice") {
+    return `DH/INV-${categoryCode}/${categoryCode}${yearSuffix}-${paddedCounter}`;
+  }
+  return `DH/DO-${categoryCode}${yearSuffix}-${paddedCounter}`;
+}
+
+function formatRunningNumberByCompany(type, company, yearSuffix, categoryCode, counter) {
+  if (company === "holding") {
+    return formatHoldingRunningNumber(type, yearSuffix, categoryCode, counter);
+  }
+  return formatTradingRunningNumber(type, yearSuffix, categoryCode, counter);
 }
 
 function getCategoryMeta(category = state.data.category) {
   return CATEGORY_CONFIG[category] || null;
+}
+
+function getCompanyMeta(company = state.data.company) {
+  return COMPANY_CONFIG[company] || null;
+}
+
+function getActiveCompanyProfile() {
+  return getCompanyMeta() || COMPANY_CONFIG.trading;
+}
+
+function syncCompanyControlsFromState() {
+  companyInputs.forEach((input) => {
+    const isActive = input.value === state.data.company;
+    input.checked = isActive;
+    input.closest(".category-option")?.classList.toggle("is-active", isActive);
+  });
 }
 
 function syncCategoryControlsFromState() {
@@ -280,7 +340,7 @@ function syncCategoryControlsFromState() {
 }
 
 function setCategoryGateState() {
-  const enabled = Boolean(state.data.category);
+  const enabled = Boolean(state.data.company && state.data.category);
   const gatedButtons = [
     document.getElementById("parseButton"),
     newPoButton,
@@ -305,6 +365,7 @@ function setCategoryGateState() {
     poFileInput.disabled = !enabled;
   }
   uploadCard?.classList.toggle("is-disabled", !enabled);
+  categorySelector?.classList.toggle("is-disabled", !state.data.company);
 }
 
 function syncFormFromState() {
@@ -520,14 +581,18 @@ function buildRecordLabel(record) {
 
 function renderSavedRecords() {
   if (!documentHistoryList) return;
+  const currentCompany = state.data.company;
   const currentCategory = state.data.category;
-  const filteredRecords = currentCategory
-    ? state.savedRecords.filter((record) => record.data?.category === currentCategory)
+  const filteredRecords = currentCompany && currentCategory
+    ? state.savedRecords.filter(
+        (record) =>
+          record.data?.company === currentCompany && record.data?.category === currentCategory,
+      )
     : [];
 
-  documentHistoryList.innerHTML = currentCategory
+  documentHistoryList.innerHTML = currentCompany && currentCategory
     ? '<option value="">Select saved record</option>'
-    : '<option value="">Select category first</option>';
+    : '<option value="">Select company and category first</option>';
 
   filteredRecords.forEach((record) => {
     const option = document.createElement("option");
@@ -543,15 +608,16 @@ function renderSavedRecords() {
   }
 }
 
-function peekNextRunningNumber(type, prefix, yearSuffix, categoryCode) {
-  const bucket = getCounterBucket(type, yearSuffix, categoryCode);
+function peekNextRunningNumber(type, yearSuffix, categoryCode, company) {
+  const bucket = getCounterBucket(type, yearSuffix, categoryCode, company);
   const nextCounter = Number(state.runningCounters[bucket] || 0) + 1;
-  return formatRunningNumber(`${prefix}${categoryCode}`, yearSuffix, nextCounter);
+  return formatRunningNumberByCompany(type, company, yearSuffix, categoryCode, nextCounter);
 }
 
 function assignDraftRunningNumbers(target = state.data) {
   const categoryMeta = getCategoryMeta(target.category);
-  if (!categoryMeta) {
+  const company = target.company || state.data.company;
+  if (!categoryMeta || !company) {
     target.poNumber = "";
     target.invoiceNumber = "";
     target.doNumber = "";
@@ -559,22 +625,23 @@ function assignDraftRunningNumbers(target = state.data) {
     return;
   }
   const yearSuffix = getYearSuffix(target.poDate || target.invoiceDate || target.doShipDate || target.doInvoiceDate);
-  target.poNumber = peekNextRunningNumber("po", "PO", yearSuffix, categoryMeta.code);
-  target.invoiceNumber = peekNextRunningNumber("invoice", "INV", yearSuffix, categoryMeta.code);
-  target.doNumber = peekNextRunningNumber("do", "DO", yearSuffix, categoryMeta.code);
+  target.poNumber = peekNextRunningNumber("po", yearSuffix, categoryMeta.code, company);
+  target.invoiceNumber = peekNextRunningNumber("invoice", yearSuffix, categoryMeta.code, company);
+  target.doNumber = peekNextRunningNumber("do", yearSuffix, categoryMeta.code, company);
   target.doInvoiceNumber = target.invoiceNumber;
 }
 
 function commitCurrentDraftNumbers(target = state.data) {
   const categoryMeta = getCategoryMeta(target.category);
-  if (!categoryMeta) return;
+  const company = target.company || state.data.company;
+  if (!categoryMeta || !company) return;
   const yearSuffix = getYearSuffix(target.poDate || target.invoiceDate || target.doShipDate || target.doInvoiceDate);
-  state.runningCounters[getCounterBucket("po", yearSuffix, categoryMeta.code)] =
-    Number(state.runningCounters[getCounterBucket("po", yearSuffix, categoryMeta.code)] || 0) + 1;
-  state.runningCounters[getCounterBucket("invoice", yearSuffix, categoryMeta.code)] =
-    Number(state.runningCounters[getCounterBucket("invoice", yearSuffix, categoryMeta.code)] || 0) + 1;
-  state.runningCounters[getCounterBucket("do", yearSuffix, categoryMeta.code)] =
-    Number(state.runningCounters[getCounterBucket("do", yearSuffix, categoryMeta.code)] || 0) + 1;
+  state.runningCounters[getCounterBucket("po", yearSuffix, categoryMeta.code, company)] =
+    Number(state.runningCounters[getCounterBucket("po", yearSuffix, categoryMeta.code, company)] || 0) + 1;
+  state.runningCounters[getCounterBucket("invoice", yearSuffix, categoryMeta.code, company)] =
+    Number(state.runningCounters[getCounterBucket("invoice", yearSuffix, categoryMeta.code, company)] || 0) + 1;
+  state.runningCounters[getCounterBucket("do", yearSuffix, categoryMeta.code, company)] =
+    Number(state.runningCounters[getCounterBucket("do", yearSuffix, categoryMeta.code, company)] || 0) + 1;
   saveRunningCounters();
 }
 
@@ -653,6 +720,7 @@ function loadRecordById(recordId) {
     ...structuredClone(record.data),
   };
   syncFormFromState();
+  syncCompanyControlsFromState();
   syncCategoryControlsFromState();
   setCategoryGateState();
   renderItemsEditor(poItemsEditor, "poItems");
@@ -802,6 +870,7 @@ function createNewDocumentState() {
 
 function createNewDocumentStateForCategory(category) {
   const nextState = structuredClone(defaultState);
+  nextState.company = state.data.company;
   nextState.category = category;
   nextState.invoiceStatus = "Pending";
   nextState.doStatus = "Delivered";
@@ -812,6 +881,7 @@ function createNewDocumentStateForCategory(category) {
 function createBlankDraftWithCurrentNumbers(current = state.data) {
   return {
     ...structuredClone(defaultState),
+    company: current.company,
     category: current.category,
     poNumber: current.poNumber,
     invoiceNumber: current.invoiceNumber,
@@ -983,6 +1053,7 @@ function renderItemsEditor(container, stateKey) {
 }
 
 function companyBlockMarkup(title) {
+  const companyProfile = getActiveCompanyProfile();
   return `
     <div class="document-top">
       <div class="logo-box">
@@ -1076,6 +1147,7 @@ function poMarkup() {
 }
 
 function invoiceMarkup() {
+  const companyProfile = getActiveCompanyProfile();
   const total = sumItems(state.data.invoiceItems);
 
   return `
@@ -1138,6 +1210,7 @@ Our Bank Details: ${safeText(companyProfile.bankDetails)}</p>
 }
 
 function deliveryOrderMarkup() {
+  const companyProfile = getActiveCompanyProfile();
   return `
     <article class="document-sheet do-sheet">
       ${companyBlockMarkup("DELIVERY ORDER")}
@@ -1626,6 +1699,7 @@ function createPdfDocument(title) {
 }
 
 function drawPdfHeader(doc, title) {
+  const companyProfile = getActiveCompanyProfile();
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 210, 297, "F");
   if (state.logoDataUrl) {
@@ -1696,6 +1770,7 @@ function drawItemTable(doc, items, options) {
 }
 
 function renderInvoicePage(doc) {
+  const companyProfile = getActiveCompanyProfile();
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   const columns = getPdfColumns();
@@ -1914,8 +1989,44 @@ async function downloadCompleteSetPdf(filename) {
 }
 
 document.getElementById("parseButton").addEventListener("click", handleParseClick);
+companyInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    if (!input.checked) {
+      input.checked = true;
+      return;
+    }
+
+    companyInputs.forEach((otherInput) => {
+      if (otherInput !== input) {
+        otherInput.checked = false;
+      }
+    });
+
+    state.currentRecordId = "";
+    state.data = {
+      ...structuredClone(defaultState),
+      company: input.value,
+    };
+    syncCompanyControlsFromState();
+    syncCategoryControlsFromState();
+    setCategoryGateState();
+    syncFormFromState();
+    renderItemsEditor(poItemsEditor, "poItems");
+    renderItemsEditor(invoiceItemsEditor, "invoiceItems");
+    renderItemsEditor(doItemsEditor, "doItems");
+    renderDocuments();
+    renderSavedRecords();
+    setStatus(`${getCompanyMeta(input.value)?.label || "Company"} selected. Please choose a category next.`, "success");
+  });
+});
+
 categoryInputs.forEach((input) => {
   input.addEventListener("change", () => {
+    if (!state.data.company) {
+      input.checked = false;
+      setStatus("Please select one company first.", "warn");
+      return;
+    }
     if (!input.checked) {
       input.checked = true;
       return;
@@ -1929,6 +2040,7 @@ categoryInputs.forEach((input) => {
 
     state.currentRecordId = "";
     state.data = createNewDocumentStateForCategory(input.value);
+    syncCompanyControlsFromState();
     syncCategoryControlsFromState();
     setCategoryGateState();
     syncFormFromState();
@@ -2209,6 +2321,7 @@ renderBillToHistory();
 renderSupplierHistory();
 renderSavedRecords();
 applyParsedData(createNewDocumentState());
+syncCompanyControlsFromState();
 syncCategoryControlsFromState();
 setCategoryGateState();
-setStatus("Please select one main category first: UBAT, SUSU, or PERALATAN.", "warn");
+setStatus("Please select one company first, then choose UBAT, SUSU, or PERALATAN.", "warn");

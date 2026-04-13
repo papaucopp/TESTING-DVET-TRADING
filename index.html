@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DVET Trading Procurement System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=2026-04-13-modern-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">DVET Trading Procurement System</p>
+          <p class="hero-byline">by GM Faris Pakri</p>
+          <p class="hero-copy">
+            Create a PO directly in the system or upload an existing PO, then auto-generate
+            the invoice and delivery order in your reference format.
+          </p>
+        </div>
+        <div class="hero-card">
+          <p class="hero-card-title">System Flow</p>
+          <ol>
+            <li>Create a PO in the form or upload `Purchase Order.pdf`</li>
+            <li>Review buyer, ship to, items, and totals</li>
+            <li>Auto-generate `Invoice` and `Delivery Order`</li>
+            <li>Download complete set or each document separately</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <aside class="panel controls">
+          <div class="panel-heading">
+            <h2>Document Input</h2>
+            <p>Create a PO manually or upload a PO and the system will read it automatically.</p>
+          </div>
+
+          <div class="panel-heading compact">
+            <h3>Main Category</h3>
+            <p>Select one category first before filling in the document.</p>
+          </div>
+          <div class="category-selector" id="categorySelector">
+            <label class="category-option">
+              <input type="checkbox" name="documentCategory" value="ubat" />
+              <span>UBAT</span>
+            </label>
+            <label class="category-option">
+              <input type="checkbox" name="documentCategory" value="susu" />
+              <span>SUSU</span>
+            </label>
+            <label class="category-option">
+              <input type="checkbox" name="documentCategory" value="peralatan" />
+              <span>PERALATAN</span>
+            </label>
+          </div>
+
+          <label class="upload-card" for="poFile" id="uploadCard">
+            <input id="poFile" type="file" accept="application/pdf" />
+            <span class="upload-title">Upload Purchase Order (PDF)</span>
+            <span class="upload-subtitle">Click or drop a PO PDF file here</span>
+          </label>
+
+          <div class="action-row">
+            <button id="parseButton" class="primary-button" type="button">
+              Read PO & Generate Data
+            </button>
+            <button id="newPoButton" class="ghost-button" type="button">
+              New PO
+            </button>
+          </div>
+
+          <div class="status-box" id="statusBox">
+            No file uploaded yet.
+          </div>
+
+          <div class="panel-heading compact">
+            <h3>Saved Records</h3>
+            <p>Load a previous PO, invoice, and delivery order set.</p>
+          </div>
+          <div class="history-controls document-history-controls">
+            <select id="documentHistory" name="documentHistory">
+              <option value="">Select saved record</option>
+            </select>
+            <button id="exportRecordsButton" class="ghost-button" type="button">Export Excel</button>
+            <button id="resetCountersButton" class="ghost-button compact-button" type="button">Reset No.</button>
+            <button id="deleteRecordButton" class="ghost-button danger" type="button">Delete</button>
+            <button id="deleteAllRecordsButton" class="ghost-button danger" type="button">Delete All</button>
+          </div>
+
+          <form id="documentForm" class="form-grid">
+            <div class="editor-grid">
+              <section class="editor-card">
+                <div class="panel-heading">
+                  <h3>PO</h3>
+                  <p>Edit purchase order details and items.</p>
+                </div>
+                <div class="editor-section">
+                  <label>
+                    <span>Purchase Order No.</span>
+                    <input name="poNumber" type="text" />
+                  </label>
+                  <label>
+                    <span>PO Date</span>
+                    <input name="poDate" type="date" />
+                  </label>
+                  <label>
+                    <span>Supplier</span>
+                    <textarea name="poSupplier" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Supplier History</span>
+                    <div class="history-controls">
+                      <select id="supplierHistory" name="supplierHistory">
+                        <option value="">Select previous Supplier</option>
+                      </select>
+                      <button id="saveSupplierHistoryButton" class="ghost-button" type="button">Save</button>
+                      <button id="editSupplierHistoryButton" class="ghost-button" type="button">Load/Edit</button>
+                      <button id="deleteSupplierHistoryButton" class="ghost-button danger" type="button">Delete</button>
+                    </div>
+                  </label>
+                  <label>
+                    <span>Ship To</span>
+                    <textarea name="poShipTo" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Prepared By</span>
+                    <select name="poPreparedBy">
+                      <option value="">Select Prepared By</option>
+                      <option value="Alif">Alif</option>
+                      <option value="Rosliman">Rosliman</option>
+                      <option value="Syawal">Syawal</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="panel-heading compact">
+                  <h3>PO Items</h3>
+                  <p>Update descriptions, quantity, price, and amount here.</p>
+                </div>
+                <div class="items-toolbar">
+                  <button id="addPoItemButton" class="ghost-button compact-button" type="button">
+                    Add Item
+                  </button>
+                </div>
+                <div id="poItemsEditor" class="items-editor"></div>
+                <button id="syncPoButton" class="primary-button compact-button" type="button">
+                  Sync PO to Invoice & DO
+                </button>
+              </section>
+
+              <section class="editor-card">
+                <div class="panel-heading">
+                  <h3>Invoice</h3>
+                  <p>Edit invoice-specific information.</p>
+                </div>
+                <div class="editor-section">
+                  <label>
+                    <span>Invoice No.</span>
+                    <input name="invoiceNumber" type="text" />
+                  </label>
+                  <label>
+                    <span>Invoice Date</span>
+                    <input name="invoiceDate" type="date" />
+                  </label>
+                  <label>
+                    <span>Bill To</span>
+                    <textarea name="invoiceBillTo" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Bill To History (7 days)</span>
+                    <div class="history-controls">
+                      <select id="billToHistory" name="billToHistory">
+                        <option value="">Select previous Bill To</option>
+                      </select>
+                      <button id="saveBillToHistoryButton" class="ghost-button" type="button">Save</button>
+                      <button id="editBillToHistoryButton" class="ghost-button" type="button">Load/Edit</button>
+                      <button id="deleteBillToHistoryButton" class="ghost-button danger" type="button">Delete</button>
+                    </div>
+                  </label>
+                  <label>
+                    <span>Ship To</span>
+                    <textarea name="invoiceShipTo" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Prepared By</span>
+                    <select name="invoicePreparedBy">
+                      <option value="">Select Prepared By</option>
+                      <option value="Alif">Alif</option>
+                      <option value="Rosliman">Rosliman</option>
+                      <option value="Syawal">Syawal</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Invoice Status</span>
+                    <input name="invoiceStatus" type="text" />
+                  </label>
+                  <label>
+                    <span>PO JHEV</span>
+                    <input name="invoicePoJhev" type="text" placeholder="Enter PO JHEV" />
+                  </label>
+                </div>
+                <div class="panel-heading compact">
+                  <h3>Invoice Items</h3>
+                  <p>Edit invoice item rows if needed.</p>
+                </div>
+                <div id="invoiceItemsEditor" class="items-editor"></div>
+              </section>
+
+              <section class="editor-card">
+                <div class="panel-heading">
+                  <h3>Delivery Order</h3>
+                  <p>Edit delivery order information.</p>
+                </div>
+                <div class="editor-section">
+                  <label>
+                    <span>DO No.</span>
+                    <input name="doNumber" type="text" />
+                  </label>
+                  <label>
+                    <span>Bill To</span>
+                    <textarea name="doBillTo" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Ship To</span>
+                    <textarea name="doShipTo" rows="5"></textarea>
+                  </label>
+                  <label>
+                    <span>Ship Date</span>
+                    <input name="doShipDate" type="date" />
+                  </label>
+                  <label>
+                    <span>Invoice No.</span>
+                    <input name="doInvoiceNumber" type="text" />
+                  </label>
+                  <label>
+                    <span>Invoice Date</span>
+                    <input name="doInvoiceDate" type="date" />
+                  </label>
+                  <label>
+                    <span>PO JHEV</span>
+                    <input name="doPoJhev" type="text" placeholder="Enter PO JHEV" />
+                  </label>
+                  <label>
+                    <span>DO Status</span>
+                    <input name="doStatus" type="text" />
+                  </label>
+                </div>
+                <div class="editor-card-spacer" aria-hidden="true"></div>
+                <button id="saveRecordButton" class="primary-button compact-button" type="button">
+                  Save Record
+                </button>
+                <div id="saveRecordNotice" class="inline-notice" aria-live="polite"></div>
+              </section>
+            </div>
+          </form>
+
+          <div class="download-stack">
+            <button id="downloadCompleteSetButton" class="ghost-button" type="button">
+              Download Complete Set
+            </button>
+            <button id="downloadPoButton" class="primary-button" type="button">
+              Download PO PDF
+            </button>
+            <button id="downloadInvoiceButton" class="primary-button" type="button">
+              Download Invoice PDF
+            </button>
+            <button id="downloadDoButton" class="primary-button alt" type="button">
+              Download Delivery Order PDF
+            </button>
+          </div>
+        </aside>
+
+        <section class="preview-column">
+          <div class="preview-header">
+            <div>
+              <p class="eyebrow">Live Preview</p>
+              <h2>Your generated PO, invoice, and delivery order appear below</h2>
+            </div>
+          </div>
+
+          <div class="preview-card">
+            <div class="preview-toolbar">
+              <h3>PO Preview</h3>
+              <button id="refreshPoPreview" class="ghost-button" type="button">
+                Refresh
+              </button>
+            </div>
+            <div id="poPreview" class="doc-canvas"></div>
+          </div>
+
+          <div class="preview-card">
+            <div class="preview-toolbar">
+              <h3>Invoice Preview</h3>
+              <button id="refreshInvoicePreview" class="ghost-button" type="button">
+                Refresh
+              </button>
+            </div>
+            <div id="invoicePreview" class="doc-canvas"></div>
+          </div>
+
+          <div class="preview-card">
+            <div class="preview-toolbar">
+              <h3>Delivery Order Preview</h3>
+              <button id="refreshDoPreview" class="ghost-button" type="button">
+                Refresh
+              </button>
+            </div>
+            <div id="doPreview" class="doc-canvas"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <p class="app-credit">by GM Faris Pakri</p>
+
+    <template id="itemEditorTemplate">
+      <div class="item-row">
+        <label class="item-field item-field-history">
+          <span>Saved Item</span>
+          <div class="saved-item-controls">
+            <select data-field="savedItem">
+              <option value="">Select saved item</option>
+            </select>
+            <button class="ghost-button danger compact-button saved-item-delete-button" type="button">
+              Delete
+            </button>
+          </div>
+        </label>
+        <label class="item-field item-field-description">
+          <span>Description</span>
+          <textarea data-field="description" rows="3"></textarea>
+        </label>
+        <label class="item-field item-field-qty">
+          <span>Qty</span>
+          <input data-field="quantity" type="number" min="0" step="1" />
+        </label>
+        <label class="item-field item-field-unit-price">
+          <span>Unit Price</span>
+          <input data-field="unitPrice" type="number" min="0" step="0.01" />
+        </label>
+        <label class="item-field item-field-amount">
+          <span>Amount</span>
+          <input data-field="amount" type="number" min="0" step="0.01" />
+        </label>
+        <button class="remove-item-button" type="button">Remove</button>
+      </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script type="module" src="./app.js?v=2026-04-13-1"></script>
+  </body>
+</html>

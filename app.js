@@ -390,9 +390,9 @@ function formatTradingRunningNumber(type, yearSuffix, categoryCode, counter) {
     return `DT/PO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
   }
   if (type === "invoice") {
-    return `DT/INV-${categoryCode}/${categoryCode}${yearSuffix}-${paddedCounter}`;
+    return `DT/INV-${categoryCode}/${yearSuffix}-${paddedCounter}`;
   }
-  return `DT/DO-${categoryCode}${yearSuffix}-${paddedCounter}`;
+  return `DT/DO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
 }
 
 function formatHoldingRunningNumber(type, yearSuffix, categoryCode, counter) {
@@ -401,9 +401,9 @@ function formatHoldingRunningNumber(type, yearSuffix, categoryCode, counter) {
     return `DH/PO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
   }
   if (type === "invoice") {
-    return `DH/INV-${categoryCode}/${categoryCode}${yearSuffix}-${paddedCounter}`;
+    return `DH/INV-${categoryCode}/${yearSuffix}-${paddedCounter}`;
   }
-  return `DH/DO-${categoryCode}${yearSuffix}-${paddedCounter}`;
+  return `DH/DO-${categoryCode}/${yearSuffix}-${paddedCounter}`;
 }
 
 function formatRunningNumberByCompany(type, company, yearSuffix, categoryCode, counter) {

@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=2026-04-14-inv-layout-1" />
+    <link rel="stylesheet" href="./styles.css?v=2026-04-14-pagination-1" />
   </head>
   <body>
     <div class="auth-overlay" id="authOverlay">
@@ -142,8 +142,8 @@
           </div>
 
           <form id="documentForm" class="form-grid">
-            <div class="editor-grid">
-              <section class="editor-card">
+            <div id="editorGrid" class="editor-grid">
+              <section id="poEditorCard" class="editor-card">
                 <div class="panel-heading">
                   <h3>PO</h3>
                   <p>Edit purchase order details and items.</p>
@@ -197,11 +197,11 @@
                     </select>
                   </label>
                 </div>
-                <div class="panel-heading compact">
+                <div id="poItemsHeading" class="panel-heading compact">
                   <h3>PO Items</h3>
                   <p>Update descriptions, quantity, price, and amount here.</p>
                 </div>
-                <div class="items-toolbar">
+                <div id="poItemsToolbar" class="items-toolbar">
                   <button id="addPoItemButton" class="ghost-button compact-button" type="button">
                     Add Item
                   </button>
@@ -212,7 +212,7 @@
                 </button>
               </section>
 
-              <section class="editor-card">
+              <section id="invoiceEditorCard" class="editor-card">
                 <div class="panel-heading">
                   <h3>Invoice</h3>
                   <p>Edit invoice-specific information.</p>
@@ -270,7 +270,7 @@
                 <div id="invoiceItemsEditor" class="items-editor"></div>
               </section>
 
-              <section class="editor-card">
+              <section id="doEditorCard" class="editor-card">
                 <div class="panel-heading">
                   <h3>Delivery Order</h3>
                   <p>Edit delivery order information.</p>
@@ -378,7 +378,7 @@
 
     <template id="itemEditorTemplate">
       <div class="item-row">
-        <div class="item-line-number" hidden>Bil 1</div>
+        <div class="item-line-number" hidden>BIL 1</div>
         <label class="item-field item-field-history">
           <span>Saved Item</span>
           <div class="saved-item-controls">
@@ -411,6 +411,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script type="module" src="./app.js?v=2026-04-14-invoice-amount-1"></script>
+    <script type="module" src="./app.js?v=2026-04-14-pagination-fix-2"></script>
   </body>
 </html>

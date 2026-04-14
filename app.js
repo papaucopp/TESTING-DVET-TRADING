@@ -45,6 +45,7 @@ const defaultState = {
   poDate: "",
   poSupplier: "",
   poSuppliers: [""],
+  poSupplierItems: [[createBlankItem()]],
   poShipTo: "",
   poPreparedBy: "",
   poItems: [createBlankItem()],
@@ -110,6 +111,11 @@ const poSupplierLabel = document.getElementById("poSupplierLabel");
 const supplierHistoryLabel = document.getElementById("supplierHistoryLabel");
 const poSupplierList = document.getElementById("poSupplierList");
 const addPoSupplierButton = document.getElementById("addPoSupplierButton");
+const poItemsToolbar = document.getElementById("poItemsToolbar");
+const editorGrid = document.getElementById("editorGrid");
+const poEditorCard = document.getElementById("poEditorCard");
+const invoiceEditorCard = document.getElementById("invoiceEditorCard");
+const doEditorCard = document.getElementById("doEditorCard");
 const poItemsEditor = document.getElementById("poItemsEditor");
 const invoiceItemsEditor = document.getElementById("invoiceItemsEditor");
 const doItemsEditor = document.getElementById("doItemsEditor");
@@ -446,6 +452,22 @@ function getPoSupplierEntries(data = state.data) {
   return [fallback];
 }
 
+function getPoSupplierItemGroups(data = state.data) {
+  const supplierEntries = getPoSupplierEntries(data);
+  const existingGroups = Array.isArray(data.poSupplierItems) ? data.poSupplierItems : [];
+  const normalizedGroups = supplierEntries.map((_, index) => {
+    const items = Array.isArray(existingGroups[index]) && existingGroups[index].length
+      ? existingGroups[index]
+      : [createBlankItem()];
+    return inferItemAmounts(items);
+  });
+  return normalizedGroups.length ? normalizedGroups : [[createBlankItem()]];
+}
+
+function flattenPoSupplierItems(data = state.data) {
+  return getPoSupplierItemGroups(data).flatMap((items) => inferItemAmounts(items));
+}
+
 function buildPoSupplierSummary(data = state.data) {
   if (!isLampinCategory(data.category)) {
     return normalizeMultiline(data.poSupplier || getPoSupplierEntries(data)[0] || "");
@@ -467,7 +489,9 @@ function buildPoSupplierSummary(data = state.data) {
 function syncPoSupplierDerivedText(target = state.data) {
   const supplierEntries = getPoSupplierEntries(target);
   target.poSuppliers = supplierEntries.length ? supplierEntries : [""];
+  target.poSupplierItems = getPoSupplierItemGroups(target);
   target.poSupplier = buildPoSupplierSummary(target);
+  target.poItems = flattenPoSupplierItems(target);
   return target.poSupplier;
 }
 
@@ -475,9 +499,11 @@ function getPoSupplierPageEntries(data = state.data) {
   const suppliers = getPoSupplierEntries(data).map((supplier) => normalizeMultiline(supplier));
   const hasMultiple = suppliers.length > 1;
   const basePoNumber = String(data.poNumber || "").trim();
+  const itemGroups = getPoSupplierItemGroups(data);
   return suppliers.map((supplier, index) => ({
     supplier,
     poNumber: hasMultiple ? getPoSubNumber(basePoNumber, index) : basePoNumber,
+    items: inferItemAmounts(itemGroups[index] || [createBlankItem()]),
     index,
   }));
 }
@@ -564,8 +590,10 @@ function syncStateFromForm() {
   });
   if (isLampinCategory()) {
     state.data.poSuppliers = getPoSupplierEntries(state.data);
+    state.data.poSupplierItems = getPoSupplierItemGroups(state.data);
   } else {
     state.data.poSuppliers = [String(state.data.poSupplier || "")];
+    state.data.poSupplierItems = [inferItemAmounts(state.data.poItems?.length ? state.data.poItems : [createBlankItem()])];
   }
   syncPoSupplierDerivedText(state.data);
 }
@@ -608,6 +636,7 @@ function normalizeItemsWithoutFormula(items) {
 function applyLampinInvoiceAmount(items) {
   return normalizeItemsWithoutFormula(items).map((item) => ({
     ...item,
+    unitPrice: 0,
     amount: LPB_INVOICE_FIXED_AMOUNT,
   }));
 }
@@ -1058,6 +1087,7 @@ function createNewDocumentState() {
   nextState.invoiceStatus = "Pending";
   nextState.doStatus = "Delivered";
   nextState.poSuppliers = [""];
+  nextState.poSupplierItems = [[createBlankItem()]];
   return applyAuthenticatedPreparedBy(nextState);
 }
 
@@ -1068,6 +1098,7 @@ function createNewDocumentStateForCategory(category) {
   nextState.invoiceStatus = "Pending";
   nextState.doStatus = "Delivered";
   nextState.poSuppliers = [""];
+  nextState.poSupplierItems = [[createBlankItem()]];
   assignDraftRunningNumbers(nextState);
   syncPoSupplierDerivedText(nextState);
   return applyAuthenticatedPreparedBy(nextState);
@@ -1085,6 +1116,7 @@ function createBlankDraftWithCurrentNumbers(current = state.data) {
     invoiceStatus: "Pending",
     doStatus: "Delivered",
     poSuppliers: [""],
+    poSupplierItems: [[createBlankItem()]],
   });
 }
 
@@ -1121,11 +1153,25 @@ function renderPoSupplierEditor() {
   }
 
   const isLpb = isLampinCategory();
+  editorGrid?.classList.toggle("is-lpb-layout", isLpb);
+  poEditorCard?.classList.toggle("is-lpb-primary", isLpb);
+  invoiceEditorCard?.classList.toggle("is-lpb-secondary", isLpb);
+  doEditorCard?.classList.toggle("is-lpb-secondary", isLpb);
   poSupplierField.readOnly = isLpb;
   poSupplierLabel.hidden = isLpb;
   supplierHistoryLabel.hidden = isLpb;
   poSupplierList.hidden = !isLpb;
   addPoSupplierButton.hidden = !isLpb;
+  const poItemsHeading = document.getElementById("poItemsHeading");
+  if (poItemsHeading) {
+    poItemsHeading.hidden = isLpb;
+  }
+  if (poItemsToolbar) {
+    poItemsToolbar.hidden = isLpb;
+  }
+  if (poItemsEditor) {
+    poItemsEditor.hidden = isLpb;
+  }
 
   if (!isLpb) {
     poSupplierField.value = state.data.poSupplier || "";
@@ -1137,6 +1183,7 @@ function renderPoSupplierEditor() {
   if (!state.data.poSuppliers.length) {
     state.data.poSuppliers = [""];
   }
+  state.data.poSupplierItems = getPoSupplierItemGroups(state.data);
   syncPoSupplierDerivedText(state.data);
   poSupplierField.value = state.data.poSupplier || "";
 
@@ -1145,16 +1192,26 @@ function renderPoSupplierEditor() {
   state.data.poSuppliers.forEach((supplier, index) => {
     const row = document.createElement("div");
     row.className = "po-supplier-row";
+    row.dataset.supplierIndex = String(index + 1);
 
     const header = document.createElement("div");
     header.className = "po-supplier-row-header";
+
+    const headingGroup = document.createElement("div");
+    headingGroup.className = "po-supplier-heading-group";
+
+    const title = document.createElement("p");
+    title.className = "po-supplier-title";
+    title.textContent = `Supplier ${index + 1}`;
+    headingGroup.appendChild(title);
 
     const badge = document.createElement("span");
     badge.className = "po-supplier-badge";
     badge.textContent =
       (hasMultipleSuppliers ? getPoSubNumber(state.data.poNumber, index) : state.data.poNumber) ||
       `Supplier ${index + 1}`;
-    header.appendChild(badge);
+    headingGroup.appendChild(badge);
+    header.appendChild(headingGroup);
 
     if (state.data.poSuppliers.length > 1) {
       const removeButton = document.createElement("button");
@@ -1163,8 +1220,10 @@ function renderPoSupplierEditor() {
       removeButton.textContent = "Remove";
       removeButton.addEventListener("click", () => {
         state.data.poSuppliers.splice(index, 1);
+        state.data.poSupplierItems.splice(index, 1);
         if (!state.data.poSuppliers.length) {
           state.data.poSuppliers = [""];
+          state.data.poSupplierItems = [[createBlankItem()]];
         }
         syncPoSupplierDerivedText(state.data);
         renderPoSupplierEditor();
@@ -1186,7 +1245,123 @@ function renderPoSupplierEditor() {
 
     row.appendChild(header);
     row.appendChild(textarea);
+
+    const itemsHeader = document.createElement("div");
+    itemsHeader.className = "po-supplier-items-header";
+    itemsHeader.innerHTML = "<strong>Items</strong>";
+    row.appendChild(itemsHeader);
+
+    const itemsContainer = document.createElement("div");
+    itemsContainer.className = "po-supplier-items-editor";
+    renderLampinSupplierItemsEditor(itemsContainer, index);
+    row.appendChild(itemsContainer);
+
+    const addItemFooter = document.createElement("div");
+    addItemFooter.className = "po-supplier-add-item-footer";
+    const addItemButton = document.createElement("button");
+    addItemButton.type = "button";
+    addItemButton.className = "ghost-button compact-button";
+    addItemButton.textContent = "Add Item";
+    addItemButton.addEventListener("click", () => {
+      state.data.poSupplierItems[index] = [
+        ...(state.data.poSupplierItems[index] || [createBlankItem()]),
+        createBlankItem(),
+      ];
+      syncPoSupplierDerivedText(state.data);
+      renderPoSupplierEditor();
+      renderDocuments();
+    });
+    addItemFooter.appendChild(addItemButton);
+    row.appendChild(addItemFooter);
+
     poSupplierList.appendChild(row);
+  });
+}
+
+function renderLampinSupplierItemsEditor(container, supplierIndex) {
+  container.innerHTML = "";
+  const groups = getPoSupplierItemGroups(state.data);
+  state.data.poSupplierItems = groups;
+  const items = groups[supplierIndex] || [createBlankItem()];
+
+  items.forEach((item, itemIndex) => {
+    const fragment = itemEditorTemplate.content.cloneNode(true);
+    const row = fragment.querySelector(".item-row");
+    const removeButton = fragment.querySelector(".remove-item-button");
+    const savedItemField = row.querySelector('[data-field="savedItem"]');
+    const savedItemDeleteButton = row.querySelector(".saved-item-delete-button");
+    const lineNumber = fragment.querySelector(".item-line-number");
+
+    if (lineNumber) {
+      lineNumber.textContent = `BIL ${itemIndex + 1}`;
+      lineNumber.hidden = false;
+    }
+
+    if (savedItemField) {
+      savedItemField.innerHTML = '<option value="">Select saved item</option>';
+      state.savedPoItems.forEach((savedItem, savedIndex) => {
+        const option = document.createElement("option");
+        option.value = String(savedIndex);
+        option.textContent = getPoItemHistoryLabel(savedItem);
+        savedItemField.appendChild(option);
+      });
+
+      savedItemField.addEventListener("change", () => {
+        const selectedIndex = Number(savedItemField.value);
+        if (!Number.isInteger(selectedIndex) || !state.savedPoItems[selectedIndex]) return;
+        state.data.poSupplierItems[supplierIndex][itemIndex] = {
+          ...state.savedPoItems[selectedIndex],
+        };
+        syncPoSupplierDerivedText(state.data);
+        renderPoSupplierEditor();
+        renderDocuments();
+      });
+
+      savedItemDeleteButton?.addEventListener("click", () => {
+        const selectedIndex = Number(savedItemField.value);
+        if (!Number.isInteger(selectedIndex) || !state.savedPoItems[selectedIndex]) return;
+        deleteSavedPoItem(selectedIndex);
+        renderPoSupplierEditor();
+        renderDocuments();
+        setStatus("Saved item deleted.", "success");
+      });
+    }
+
+    row.querySelectorAll("input, textarea").forEach((fieldElement) => {
+      const field = fieldElement.dataset.field;
+      fieldElement.value = item[field] ?? "";
+      fieldElement.disabled = false;
+      fieldElement.addEventListener("input", () => {
+        const value = field === "description" ? fieldElement.value : coerceNumber(fieldElement.value);
+        state.data.poSupplierItems[supplierIndex][itemIndex][field] = value;
+
+        if (field === "quantity" || field === "unitPrice") {
+          state.data.poSupplierItems[supplierIndex][itemIndex].amount =
+            coerceNumber(state.data.poSupplierItems[supplierIndex][itemIndex].quantity) *
+            coerceNumber(state.data.poSupplierItems[supplierIndex][itemIndex].unitPrice);
+          const amountInput = row.querySelector('[data-field="amount"]');
+          if (amountInput) {
+            amountInput.value = formatNumber(state.data.poSupplierItems[supplierIndex][itemIndex].amount);
+          }
+        }
+
+        syncPoSupplierDerivedText(state.data);
+        renderDocuments();
+      });
+    });
+
+    removeButton?.addEventListener("click", () => {
+      if (state.data.poSupplierItems[supplierIndex].length <= 1) {
+        state.data.poSupplierItems[supplierIndex] = [createBlankItem()];
+      } else {
+        state.data.poSupplierItems[supplierIndex].splice(itemIndex, 1);
+      }
+      syncPoSupplierDerivedText(state.data);
+      renderPoSupplierEditor();
+      renderDocuments();
+    });
+
+    container.appendChild(fragment);
   });
 }
 
@@ -1247,7 +1422,7 @@ function renderItemsEditor(container, stateKey) {
     const savedItemDeleteButton = row.querySelector(".saved-item-delete-button");
     const lineNumber = fragment.querySelector(".item-line-number");
     if (lineNumber) {
-      lineNumber.textContent = `Bil ${index + 1}`;
+      lineNumber.textContent = `BIL ${index + 1}`;
       lineNumber.hidden = !isLampinCategory();
     }
 
@@ -1290,7 +1465,11 @@ function renderItemsEditor(container, stateKey) {
 
     row.querySelectorAll("input, textarea").forEach((fieldElement) => {
       const field = fieldElement.dataset.field;
-      if (isStaticInvoicePricing && field === "amount") {
+      if (isStaticInvoicePricing && field === "unitPrice") {
+        state.data[stateKey][index].unitPrice = 0;
+        fieldElement.value = "0";
+        fieldElement.disabled = true;
+      } else if (isStaticInvoicePricing && field === "amount") {
         state.data[stateKey][index].amount = LPB_INVOICE_FIXED_AMOUNT;
         fieldElement.value = formatNumber(LPB_INVOICE_FIXED_AMOUNT);
         fieldElement.disabled = true;
@@ -1314,7 +1493,12 @@ function renderItemsEditor(container, stateKey) {
         }
 
         if (isStaticInvoicePricing) {
+          state.data[stateKey][index].unitPrice = 0;
           state.data[stateKey][index].amount = LPB_INVOICE_FIXED_AMOUNT;
+          const unitPriceInput = row.querySelector('[data-field="unitPrice"]');
+          if (unitPriceInput) {
+            unitPriceInput.value = "0";
+          }
           const amountInput = row.querySelector('[data-field="amount"]');
           if (amountInput) {
             amountInput.value = formatNumber(LPB_INVOICE_FIXED_AMOUNT);
@@ -1390,7 +1574,6 @@ function itemRowsMarkup(items, { includePricing, includeCheckBox }) {
 }
 
 function poMarkup() {
-  const total = sumItems(state.data.poItems);
   const poPages = isLampinCategory()
     ? getPoSupplierPageEntries(state.data).filter((entry) => entry.supplier || entry.index === 0)
     : [{ supplier: state.data.poSupplier, poNumber: state.data.poNumber, index: 0 }];
@@ -1429,11 +1612,11 @@ function poMarkup() {
                 <th class="numeric">Amount</th>
               </tr>
             </thead>
-            <tbody>${itemRowsMarkup(state.data.poItems, { includePricing: true, includeCheckBox: false })}</tbody>
+            <tbody>${itemRowsMarkup(entry.items || state.data.poItems, { includePricing: true, includeCheckBox: false })}</tbody>
           </table>
 
           <div class="summary-grid">
-            <div class="summary-line"><span></span><strong>Total (MYR): ${currency(total)}</strong></div>
+            <div class="summary-line"><span></span><strong>Total (MYR): ${currency(sumItems(entry.items || state.data.poItems))}</strong></div>
           </div>
 
           <p class="footer-note">Generated automatically. No signature is required.</p>
@@ -1588,6 +1771,12 @@ function applyParsedData(parsed) {
         : isLampinCategory(parsed.category || state.data.category)
           ? [String(nextPoSupplier || "")]
           : [String(nextPoSupplier || "")],
+    poSupplierItems:
+      parsed.poSupplierItems?.length
+        ? getPoSupplierItemGroups(parsed)
+        : isLampinCategory(parsed.category || state.data.category)
+          ? [inferItemAmounts(parsed.poItems?.length ? parsed.poItems : [createBlankItem()])]
+          : [inferItemAmounts(parsed.poItems?.length ? parsed.poItems : state.data.poItems)],
     poItems: inferItemAmounts(parsed.poItems?.length ? parsed.poItems : state.data.poItems),
     invoiceItems: inferItemAmounts(parsed.invoiceItems?.length ? parsed.invoiceItems : state.data.invoiceItems),
     doItems: inferItemAmounts(parsed.doItems?.length ? parsed.doItems : state.data.doItems),
@@ -2033,9 +2222,9 @@ function addPdfPage(doc) {
   doc.addPage("a4", "portrait");
 }
 
-function drawItemTable(doc, items, options) {
-  const { includePricing = false, includeCheck = false, startY = 86 } = options;
-  const rowHeight = 14;
+const CONTINUED_PAGE_TABLE_START_Y = 8;
+
+function drawItemTableHeader(doc, startY, includePricing, includeCheck) {
   const colX = includePricing
     ? { no: 10, desc: 22, qty: 132, unitPrice: 156, amount: 188 }
     : { no: 10, desc: 22, qty: 160, check: 188 };
@@ -2057,12 +2246,47 @@ function drawItemTable(doc, items, options) {
     doc.text("Check", colX.check, startY - 1.5, { align: "right" });
   }
 
-  let currentY = startY + 8;
+  return colX;
+}
+
+function ensurePdfSpace(doc, currentY, requiredHeight, options = {}) {
+  const { minBottomY = 250, onPageBreak } = options;
+  if (currentY + requiredHeight <= minBottomY) {
+    return currentY;
+  }
+  if (typeof onPageBreak === "function") {
+    return onPageBreak();
+  }
+  return currentY;
+}
+
+function drawItemTable(doc, items, options) {
+  const { includePricing = false, includeCheck = false, startY = 86 } = options;
+  const rowHeight = 14;
+  const { onPageBreak } = options;
+  let activeStartY = startY;
+  const colX = drawItemTableHeader(doc, activeStartY, includePricing, includeCheck);
+
+  let currentY = activeStartY + 8;
   doc.setFont("helvetica", "normal");
   items.forEach((item, index) => {
     const description = `${item.description}${item.code ? ` (${item.code})` : ""}`;
-    doc.text(String(index + 1), colX.no, currentY);
     const wrapped = doc.splitTextToSize(description, includePricing ? 95 : 120);
+    const usedHeight = Math.max(rowHeight, wrapped.length * 5.2);
+    currentY = ensurePdfSpace(doc, currentY, usedHeight + 6, {
+      minBottomY: 246,
+      onPageBreak: () => {
+        let nextStartY = activeStartY;
+        if (typeof onPageBreak === "function") {
+          nextStartY = onPageBreak() ?? activeStartY;
+        }
+        activeStartY = nextStartY;
+        drawItemTableHeader(doc, activeStartY, includePricing, includeCheck);
+        doc.setFont("helvetica", "normal");
+        return activeStartY + 8;
+      },
+    });
+    doc.text(String(index + 1), colX.no, currentY);
     doc.text(wrapped, colX.desc, currentY);
     doc.text(formatNumber(item.quantity), colX.qty, currentY, { align: "right" });
     if (includePricing) {
@@ -2072,12 +2296,21 @@ function drawItemTable(doc, items, options) {
     if (includeCheck) {
       doc.rect(colX.check - 5, currentY - 4, 4.5, 4.5);
     }
-    const usedHeight = Math.max(rowHeight, wrapped.length * 5.2);
     doc.line(10, currentY + usedHeight - 7, 200, currentY + usedHeight - 7);
     currentY += usedHeight;
   });
 
   return currentY;
+}
+
+function stampPdfPageNumbers(doc) {
+  const totalPages = doc.getNumberOfPages();
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  for (let page = 1; page <= totalPages; page += 1) {
+    doc.setPage(page);
+    doc.text(`Page ${page}/${totalPages}`, 105, 289, { align: "center" });
+  }
 }
 
 function renderInvoicePage(doc) {
@@ -2120,8 +2353,22 @@ function renderInvoicePage(doc) {
     contentTop + detailsBlock.height,
   ) + 12;
 
-  let currentY = drawItemTable(doc, state.data.invoiceItems, { includePricing: true, startY: tableStartY });
+  let currentY = drawItemTable(doc, state.data.invoiceItems, {
+    includePricing: true,
+    startY: tableStartY,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
   const total = sumItems(state.data.invoiceItems);
+  currentY = ensurePdfSpace(doc, currentY, 38, {
+    minBottomY: 255,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
   currentY += 4;
   doc.setFont("helvetica", "bold");
   doc.text(`${totalQuantity(state.data.invoiceItems)}`, 132, currentY, { align: "right" });
@@ -2153,14 +2400,13 @@ function renderInvoicePage(doc) {
     currentY,
     { maxWidth: 150, lineHeight: 4.8 },
   );
-  doc.setFontSize(9);
-  doc.text("Page 1/1", 105, 289, { align: "center" });
 }
 
 function renderPoPage(doc, poPageEntry = null, pageNumber = 1, totalPages = 1) {
   const activePoEntry = poPageEntry || {
     supplier: state.data.poSupplier,
     poNumber: state.data.poNumber,
+    items: state.data.poItems,
     index: 0,
   };
   doc.setFont("helvetica", "bold");
@@ -2197,14 +2443,27 @@ function renderPoPage(doc, poPageEntry = null, pageNumber = 1, totalPages = 1) {
     contentTop + detailsBlock.height,
   ) + 12;
 
-  let currentY = drawItemTable(doc, state.data.poItems, { includePricing: true, startY: tableStartY });
-  const total = sumItems(state.data.poItems);
+  const activeItems = activePoEntry.items || state.data.poItems;
+  let currentY = drawItemTable(doc, activeItems, {
+    includePricing: true,
+    startY: tableStartY,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
+  const total = sumItems(activeItems);
+  currentY = ensurePdfSpace(doc, currentY, 18, {
+    minBottomY: 262,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
   currentY += 6;
   doc.setFont("helvetica", "bold");
   doc.text("Total (MYR):", 170, currentY, { align: "right" });
   doc.text(currency(total), 196, currentY, { align: "right" });
-  doc.setFontSize(9);
-  doc.text(`Page ${pageNumber}/${totalPages}`, 105, 289, { align: "center" });
 }
 
 function getRenderablePoPages() {
@@ -2230,6 +2489,7 @@ async function downloadPoPdf(filename) {
   await ensureLogoDataUrl();
   const doc = createPdfDocument("PURCHASE ORDER");
   renderAllPoPages(doc);
+  stampPdfPageNumbers(doc);
   return doc.save(filename, { returnPromise: true });
 }
 
@@ -2237,6 +2497,7 @@ async function downloadInvoicePdf(filename) {
   await ensureLogoDataUrl();
   const doc = createPdfDocument("INVOICE");
   renderInvoicePage(doc);
+  stampPdfPageNumbers(doc);
   return doc.save(filename, { returnPromise: true });
 }
 
@@ -2278,7 +2539,21 @@ function renderDeliveryOrderPage(doc) {
     contentTop + detailsBlock.height,
   ) + 12;
 
-  let currentY = drawItemTable(doc, state.data.doItems, { includeCheck: true, startY: tableStartY });
+  let currentY = drawItemTable(doc, state.data.doItems, {
+    includeCheck: true,
+    startY: tableStartY,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
+  currentY = ensurePdfSpace(doc, currentY, 34, {
+    minBottomY: 255,
+    onPageBreak: () => {
+      addPdfPage(doc);
+      return CONTINUED_PAGE_TABLE_START_Y;
+    },
+  });
   currentY += 5;
   doc.setFont("helvetica", "bold");
   doc.text("Total :", 170, currentY, { align: "right" });
@@ -2299,14 +2574,13 @@ function renderDeliveryOrderPage(doc) {
     currentY + 6,
     { maxWidth: 150, lineHeight: 4.8 },
   );
-  doc.setFontSize(9);
-  doc.text("Page 1/1", 105, 289, { align: "center" });
 }
 
 async function downloadDeliveryOrderPdf(filename) {
   await ensureLogoDataUrl();
   const doc = createPdfDocument("DELIVERY ORDER");
   renderDeliveryOrderPage(doc);
+  stampPdfPageNumbers(doc);
   return doc.save(filename, { returnPromise: true });
 }
 
@@ -2320,6 +2594,7 @@ async function downloadCompleteSetPdf(filename) {
   addPdfPage(doc);
   drawPdfHeader(doc, "DELIVERY ORDER");
   renderDeliveryOrderPage(doc);
+  stampPdfPageNumbers(doc);
   return doc.save(filename, { returnPromise: true });
 }
 
@@ -2414,8 +2689,15 @@ syncPoButton?.addEventListener("click", () => {
 
 addPoItemButton?.addEventListener("click", () => {
   syncStateFromForm();
-  state.data.poItems.push(createBlankItem());
-  renderItemsEditor(poItemsEditor, "poItems");
+  if (isLampinCategory()) {
+    state.data.poSupplierItems = getPoSupplierItemGroups(state.data);
+    state.data.poSupplierItems[0] = [...(state.data.poSupplierItems[0] || [createBlankItem()]), createBlankItem()];
+    syncPoSupplierDerivedText(state.data);
+    renderPoSupplierEditor();
+  } else {
+    state.data.poItems.push(createBlankItem());
+    renderItemsEditor(poItemsEditor, "poItems");
+  }
   renderDocuments();
   setStatus("New PO item row added.", "success");
 });
@@ -2424,6 +2706,7 @@ addPoSupplierButton?.addEventListener("click", () => {
   if (!isLampinCategory()) return;
   syncStateFromForm();
   state.data.poSuppliers = [...getPoSupplierEntries(state.data), ""];
+  state.data.poSupplierItems = [...getPoSupplierItemGroups(state.data), [createBlankItem()]];
   syncPoSupplierDerivedText(state.data);
   renderPoSupplierEditor();
   renderDocuments();

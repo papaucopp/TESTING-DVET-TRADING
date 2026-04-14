@@ -505,6 +505,19 @@ textarea {
   align-items: stretch;
 }
 
+.editor-grid.is-lpb-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.editor-grid.is-lpb-layout #supplierHistoryLabel,
+.editor-grid.is-lpb-layout #poItemsHeading,
+.editor-grid.is-lpb-layout #poItemsToolbar,
+.editor-grid.is-lpb-layout #poItemsEditor {
+  display: none !important;
+}
+
 .editor-card {
   display: grid;
   gap: 16px;
@@ -517,6 +530,45 @@ textarea {
   align-content: start;
   box-shadow: var(--shadow-soft);
   position: relative;
+}
+
+.editor-card.is-lpb-primary {
+  grid-column: 1 / -1;
+  padding: 28px;
+  gap: 20px;
+  min-height: auto;
+  height: fit-content;
+  align-self: start;
+}
+
+.editor-card.is-lpb-primary .editor-section {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+
+.editor-card.is-lpb-primary .editor-section > label,
+.editor-card.is-lpb-primary .editor-section > div,
+.editor-card.is-lpb-primary .po-supplier-list,
+.editor-card.is-lpb-primary #poSupplierLabel,
+.editor-card.is-lpb-primary #supplierHistoryLabel {
+  grid-column: 1 / -1;
+}
+
+.editor-card.is-lpb-primary .panel-heading h3 {
+  font-size: 1.8rem;
+}
+
+.editor-card.is-lpb-primary .panel-heading p {
+  font-size: 1rem;
+}
+
+.editor-card.is-lpb-primary .po-supplier-row {
+  padding: 22px;
+}
+
+.editor-card.is-lpb-secondary {
+  min-height: auto;
+  align-self: start;
 }
 
 .editor-card::before {
@@ -536,16 +588,30 @@ textarea {
 
 .po-supplier-list {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .po-supplier-row {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, #fbfdfb 0%, #f1f7f3 100%);
-  border: 1px solid #dbe7df;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 247, 243, 0.98) 100%);
+  border: 2px solid #c9ddd0;
+  box-shadow:
+    0 16px 30px rgba(20, 45, 33, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  position: relative;
+}
+
+.po-supplier-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  border-radius: 26px 26px 0 0;
+  background: linear-gradient(90deg, #2b6b52 0%, #b7d0c0 100%);
 }
 
 .po-supplier-row textarea {
@@ -554,9 +620,27 @@ textarea {
 
 .po-supplier-row-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #cfe0d6;
+  position: relative;
+}
+
+.po-supplier-heading-group {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.po-supplier-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--accent-strong);
+  letter-spacing: -0.01em;
 }
 
 .po-supplier-badge {
@@ -570,6 +654,43 @@ textarea {
   color: var(--accent-strong);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.po-supplier-row-header .ghost-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.po-supplier-items-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 0;
+}
+
+.po-supplier-items-header strong {
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.po-supplier-items-editor {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1.5px solid #d7e5dc;
+  background: linear-gradient(180deg, rgba(251, 253, 251, 0.96) 0%, rgba(243, 248, 245, 0.98) 100%);
+}
+
+.po-supplier-add-item-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 2px;
 }
 
 .editor-card .panel-heading h3 {
@@ -698,6 +819,7 @@ textarea {
   grid-column: 1 / -1;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   width: fit-content;
   min-height: 30px;
   padding: 4px 10px;
@@ -706,6 +828,8 @@ textarea {
   color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 800;
+  justify-self: center;
+  text-align: center;
 }
 
 .item-field {
